@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Job Sequencing with Deadlines Visualizer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111827;
+      color: #f1f5f9;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { text-align: center; }
+    .container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .array {
+      display: flex;
+      gap: 6px;
+      margin: 10px 0;
+    }
+    .cell {
+      width: 50px; height: 50px;
+      display: flex; align-items: center; justify-content: center;
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    .cell.selected { background: #2563eb; }
+    .cell.patched { background: #16a34a; }
+    .panel { padding: 10px; border-radius: 12px; background: #0f172a; min-width: 280px; }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button#startBtn { background: #2563eb; color: #fff; }
+    button#resetBtn { background: #475569; color: #fff; }
+    #log {
+      background: #1e293b;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    #log p { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <h1>Job Sequencing with Deadlines</h1>
+  <div class="container">
+    <div class="panel">
+      <h3>Job Ids</h3>
+      <div id="jobRow" class="array"></div>
+      <h3>Deadlines</h3>
+      <div id="deadlineRow" class="array"></div>
+      <h3>Profit</h3>
+      <div id="profitRow" class="array"></div>
+      <h3>Schedule</h3>
+      <div id="scheduleRow" class="array"></div>
+      <div style="margin-top: 12px;">
+        <button id="startBtn">Start</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Console</h3>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const jobs = [
+      { id: 'a', deadline: 2, profit: 100 },
+      { id: 'b', deadline: 1, profit: 19 },
+      { id: 'c', deadline: 2, profit: 27 },
+      { id: 'd', deadline: 1, profit: 25 },
+      { id: 'e', deadline: 3, profit: 15 },
+    ];
+
+    let N = jobs.length;
+    let slots = [];
+    let result = [];
+    let delay = 600;
+    let running = false;
+
+    const jobRow = document.getElementById('jobRow');
+    const deadlineRow = document.getElementById('deadlineRow');
+    const profitRow = document.getElementById('profitRow');
+    const scheduleRow = document.getElementById('scheduleRow');
+    const logEl = document.getElementById('log');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+    function log(msg){
+      const p = document.createElement('p');
+      p.textContent = msg;
+      logEl.appendChild(p);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function renderArrays(){
+      jobRow.innerHTML = '';
+      deadlineRow.innerHTML = '';
+      profitRow.innerHTML = '';
+      scheduleRow.innerHTML = '';
+      jobs.forEach(j => {
+        jobRow.appendChild(makeCell(j.id));
+        deadlineRow.appendChild(makeCell(j.deadline));
+        profitRow.appendChild(makeCell(j.profit));
+      });
+      for(let i=0;i<N;i++) scheduleRow.appendChild(makeCell('-'));
+    }
+    function makeCell(txt){
+      const div = document.createElement('div');
+      div.className = 'cell';
+      div.textContent = txt;
+      return div;
+    }
+
+    async function run(){
+      if(running) return; running = true;
+      logEl.innerHTML = '';
+      slots = new Array(N).fill(0);
+      result = new Array(N).fill('-');
+
+      // Sort jobs by profit descending
+      jobs.sort((a,b)=>b.profit - a.profit);
+      renderArrays();
+      log('Jobs sorted by profit');
+      await sleep(delay);
+
+      const jobCells = jobRow.children;
+      const deadlineCells = deadlineRow.children;
+      const scheduleCells = scheduleRow.children;
+
+      for(let i=0;i<N;i++){
+        jobCells[i].classList.add('selected');
+        deadlineCells[i].classList.add('selected');
+        await sleep(delay);
+        for(let j=Math.min(N, jobs[i].deadline)-1; j>=0; j--){
+          if(slots[j]===0){
+            slots[j]=1;
+            result[j]=jobs[i].id;
+            scheduleCells[j].textContent = jobs[i].id;
+            scheduleCells[j].classList.add('patched');
+            log(`Placed job ${jobs[i].id} in slot ${j}`);
+            await sleep(delay);
+            break;
+          }
+        }
+        jobCells[i].classList.remove('selected');
+        deadlineCells[i].classList.remove('selected');
+      }
+      running=false;
+      log('Job scheduling completed.');
+    }
+
+    function reset(){
+      if(running) return;
+      logEl.innerHTML = '';
+      renderArrays();
+      slots = new Array(N).fill(0);
+      result = new Array(N).fill('-');
+    }
+
+    startBtn.addEventListener('click', run);
+    resetBtn.addEventListener('click', reset);
+    renderArrays();
+  </script>
+</body>
+</html>
